@@ -10,16 +10,15 @@ import unicodedata
 # ==========================================
 # 🔗 CONFIGURACIÓN DE FEEDBACK
 # ==========================================
-LINK_FEEDBACK = "https://tally.so/r/MeDqZX" 
+LINK_FEEDBACK = "https://tally.so/r/MeDqZX"
 
 # ==========================================
-# 🔐 CANDADO DE SEGURIDAD (V6.0)
+# 🔐 CANDADO DE SEGURIDAD (V6.1)
 # ==========================================
 # Nota: La contraseña se configura en secrets.toml o en Streamlit Cloud Secrets
-# Si no se configura, la contraseña por defecto es: santafe2025
 
 def check_password():
-    """Retorna True si el usuario tiene permiso."""
+    """Retorna True si el usuario tiene permiso (Lógica Blindada v6.1)."""
     if "password_correct" not in st.session_state:
         st.session_state["password_correct"] = False
     if "role" not in st.session_state:
@@ -28,18 +27,14 @@ def check_password():
     if st.session_state["password_correct"]:
         return True
 
-    # Interfaz de Login Profesional
+    # Estilos CSS para Login
     st.markdown("""
     <style>
         .stApp { background-color: #f8f9fa; }
         .login-container { 
-            max-width: 400px; 
-            margin: 100px auto; 
-            padding: 40px; 
-            background: white; 
-            border-radius: 12px; 
-            box-shadow: 0 4px 20px rgba(0,0,0,0.08); 
-            text-align: center;
+            max-width: 400px; margin: 100px auto; padding: 40px; 
+            background: white; border-radius: 12px; 
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08); text-align: center;
         }
         .login-title { font-family: 'Arial', sans-serif; color: #333; font-weight: 700; font-size: 24px; margin-bottom: 5px; }
         .login-subtitle { font-family: 'Arial', sans-serif; color: #666; font-size: 14px; margin-bottom: 25px; }
@@ -52,28 +47,32 @@ def check_password():
             st.image("logo.png", width=150)
         else:
             st.image("https://cdn-icons-png.flaticon.com/512/3004/3004458.png", width=80)
-        
+
         st.markdown("<div class='login-title'>Laboratorio Santa Fe</div>", unsafe_allow_html=True)
         st.markdown("<div class='login-subtitle'>Acceso Corporativo</div>", unsafe_allow_html=True)
-        
-        pwd_input = st.text_input("Contraseña:", type="password", key="pwd_input", label_visibility="collapsed", placeholder="Ingrese su clave de acceso")
-        
+
+        pwd_input = st.text_input("Contraseña:", type="password", key="pwd_input", label_visibility="collapsed", placeholder="Ingrese su clave")
+
         if st.button("Iniciar Sesión", type="primary", use_container_width=True):
-            # Lógica de Roles (RBAC)
-            admin_pass = st.secrets.get("PASSWORD_ADMIN", "admin123")
-            user_pass = st.secrets.get("PASSWORD_USER", "user123")
-            
-            if pwd_input == admin_pass:
+            # 1. Recuperar claves y forzar conversión a String limpia
+            admin_pass = str(st.secrets.get("PASSWORD_ADMIN", "admin123")).strip()
+            user_pass = str(st.secrets.get("PASSWORD_USER", "user123")).strip()
+
+            # 2. Limpiar input del usuario
+            input_limpio = str(pwd_input).strip()
+
+            # 3. Comparación Segura
+            if input_limpio == admin_pass:
                 st.session_state["password_correct"] = True
                 st.session_state["role"] = "admin"
                 st.rerun()
-            elif pwd_input == user_pass:
+            elif input_limpio == user_pass:
                 st.session_state["password_correct"] = True
                 st.session_state["role"] = "user"
                 st.rerun()
             else:
                 st.error("⛔ Acceso Denegado")
-                
+
     return False
 
 # Si no pasa el candado, detenemos la ejecución aquí
@@ -556,7 +555,7 @@ if menu_seleccionado == "📝 Cotizador y Catálogo":
                 if col_save.button("💾 Guardar", use_container_width=True):
                     guardar_en_supabase(paciente, float(total), sel_desc)
                 pdf_data = generar_pdf(paciente or "Público", st.session_state['carrito'], subtotal, total_desc, total, sel_desc)
-                col_pdf.download_button("📄 PDF", data=pdf, file_name=f"Cotizacion.pdf", mime="application/pdf", use_container_width=True)
+                col_pdf.download_button("📄 PDF", data=pdf_data, file_name=f"Cotizacion.pdf", mime="application/pdf", use_container_width=True)
 
 # ---------------------------------------------------------
 # VISTA 2: HISTORIAL
