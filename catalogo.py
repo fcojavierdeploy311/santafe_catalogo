@@ -190,6 +190,15 @@ def eliminar_cotizacion(id_cot):
         return True
     except Exception as e: return False
 
+def eliminar_estudio(id_estudio):
+    try:
+        supabase.table("catalogo_servicios").delete().eq("id", id_estudio).execute()
+        st.toast("Estudio eliminado correctamente", icon="🗑️")
+        return True
+    except Exception as e:
+        st.error(f"Error eliminando estudio: {e}")
+        return False
+
 # --- MOTOR PDF ---
 def limpiar_texto(t):
     if not isinstance(t, str): return str(t)
@@ -447,14 +456,14 @@ if menu_seleccionado == "📝 Cotizador y Catálogo":
         with st.container(height=600, border=False):
             if df_ver.empty: st.warning("No hay resultados")
             else:
-                h1, h2, h3, h4 = st.columns([4, 1.5, 1.5, 1.2])
+                h1, h2, h3, h4 = st.columns([3.8, 1.5, 1.5, 1.5])
                 h1.caption("**Estudio**")
                 h2.caption("**Tiempo**")
                 h3.caption("**Precio**")
                 
                 for i, row in df_ver.iterrows():
                     with st.container():
-                        c_nom, c_t, c_pre, c_btn = st.columns([4, 1.5, 1.5, 1.2])
+                        c_nom, c_t, c_pre, c_btn = st.columns([3.8, 1.5, 1.5, 1.5])
                         lugar = str(row.get('lugar_proceso',''))
                         badge_cls = "badge-int" if "santa fe" in lugar.lower() else "badge-ref"
                         badge_txt = "INT" if "santa fe" in lugar.lower() else f"REF"
@@ -468,12 +477,23 @@ if menu_seleccionado == "📝 Cotizador y Catálogo":
                         c_pre.markdown(f"<span class='precio-lista'>${precio:,.2f}</span>", unsafe_allow_html=True)
                         
                         sys_id = row.get('id', i)
-                        col_add, col_edit = c_btn.columns(2)
-                        if col_add.button("➕", key=f"add_{sys_id}"):
+                        col_add, col_edit, col_del = c_btn.columns([1, 1, 1])
+                        
+                        if col_add.button("➕", key=f"add_{sys_id}", help="Agregar al carrito"):
                             item = {"id": sys_id, "nombre_estudio": row['nombre_estudio'], "precio_publico": precio if pd.notna(precio) else 0}
                             agregar_item(item)
+                            
                         if col_edit.button("✏️", key=f"edit_st_{sys_id}", help="Editar estudio"):
                             editar_estudio_dialog(row)
+                            
+                        with col_del:
+                            with st.popover("🗑️", help="Eliminar permanentemente"):
+                                st.markdown("¿Borrar estudio?")
+                                if st.button("Sí, borrar", key=f"confirm_del_st_{sys_id}", type="primary"):
+                                    if eliminar_estudio(sys_id):
+                                        st.cache_data.clear()
+                                        st.rerun()
+
                         st.markdown("---")
 
     with col_cotizador:
