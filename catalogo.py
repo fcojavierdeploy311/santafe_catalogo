@@ -8,13 +8,67 @@ import json
 import unicodedata
 
 # ==========================================
-# 🔗 CONFIGURACIÓN DE FEEDBACK (TU ENLACE TALLY)
+# 🔗 CONFIGURACIÓN DE FEEDBACK
 # ==========================================
 LINK_FEEDBACK = "https://tally.so/r/MeDqZX" 
 
 # ==========================================
-# 📝 DATOS DE LA EMPRESA
+# 🔐 CANDADO DE SEGURIDAD (V6.0)
 # ==========================================
+# Nota: La contraseña se configura en secrets.toml o en Streamlit Cloud Secrets
+# Si no se configura, la contraseña por defecto es: santafe2025
+
+def check_password():
+    """Retorna True si el usuario tiene permiso."""
+    if "password_correct" not in st.session_state:
+        st.session_state["password_correct"] = False
+
+    if st.session_state["password_correct"]:
+        return True
+
+    # Interfaz de Login
+    st.markdown("""
+    <style>
+        .stApp { background-color: #f0f2f6; }
+        .login-box { 
+            max-width: 400px; 
+            margin: 100px auto; 
+            padding: 30px; 
+            background: white; 
+            border-radius: 10px; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
+            text-align: center;
+        }
+    </style>
+    """, unsafe_allow_html=True)
+    
+    col1, col2, col3 = st.columns([1,2,1])
+    with col2:
+        st.image("https://cdn-icons-png.flaticon.com/512/3004/3004458.png", width=80)
+        st.markdown("### Laboratorio Santa Fe")
+        st.caption("Acceso Restringido")
+        pwd_input = st.text_input("Contraseña:", type="password", key="pwd_input")
+        
+        if st.button("Ingresar al Sistema", use_container_width=True):
+            # Busca la clave en los secretos, si no existe usa 'santafe2025'
+            clave_maestra = st.secrets.get("PASSWORD_APP", "santafe2025")
+            
+            if pwd_input == clave_maestra:
+                st.session_state["password_correct"] = True
+                st.rerun()
+            else:
+                st.error("⛔ Acceso Denegado")
+                
+    return False
+
+# Si no pasa el candado, detenemos la ejecución aquí
+if not check_password():
+    st.stop()
+
+# ==========================================
+# 📝 AQUI COMIENZA LA APP (SOLO SI LOGUEADO)
+# ==========================================
+
 LAB_NOMBRE = "Laboratorio de Análisis Clínicos Santa Fe"
 LAB_DIRECCION = "Calle Miguel Cabrera 409 D, Col. Centro, Oaxaca de Juárez, Oaxaca"
 LAB_CONTACTO = "Tel: 9511895316 | labclinicosantafe@gmail.com"
@@ -45,11 +99,9 @@ st.markdown("""
     .precio-lista { font-weight: bold; color: #333; }
     div[data-testid="stForm"] { border: 1px solid #e0e0e0; padding: 20px; border-radius: 10px; }
     button[title="Editar"] { border-color: #4CAF50; color: #4CAF50; }
-    /* Ajuste para que el scroll interno se vea limpio */
     [data-testid="stVerticalBlock"] > [style*="flex-direction: column;"] > [data-testid="stVerticalBlock"] {
         scrollbar-width: thin;
     }
-    /* Estilo para tus créditos */
     .credits { font-size: 12px; color: #666; margin-top: 20px; margin-bottom: 10px; }
     .credits b { color: #333; font-weight: 600; }
 </style>
@@ -455,7 +507,7 @@ if menu_seleccionado == "📝 Cotizador y Catálogo":
                 if col_save.button("💾 Guardar", use_container_width=True):
                     guardar_en_supabase(paciente, float(total), sel_desc)
                 pdf_data = generar_pdf(paciente or "Público", st.session_state['carrito'], subtotal, total_desc, total, sel_desc)
-                col_pdf.download_button("📄 PDF", data=pdf_data, file_name=f"Cotizacion.pdf", mime="application/pdf", use_container_width=True)
+                col_pdf.download_button("📄 PDF", data=pdf, file_name=f"Cotizacion.pdf", mime="application/pdf", use_container_width=True)
 
 # ---------------------------------------------------------
 # VISTA 2: HISTORIAL
