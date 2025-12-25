@@ -22,39 +22,54 @@ def check_password():
     """Retorna True si el usuario tiene permiso."""
     if "password_correct" not in st.session_state:
         st.session_state["password_correct"] = False
+    if "role" not in st.session_state:
+        st.session_state["role"] = None
 
     if st.session_state["password_correct"]:
         return True
 
-    # Interfaz de Login
+    # Interfaz de Login Profesional
     st.markdown("""
     <style>
-        .stApp { background-color: #f0f2f6; }
-        .login-box { 
+        .stApp { background-color: #f8f9fa; }
+        .login-container { 
             max-width: 400px; 
             margin: 100px auto; 
-            padding: 30px; 
+            padding: 40px; 
             background: white; 
-            border-radius: 10px; 
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
+            border-radius: 12px; 
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08); 
             text-align: center;
         }
+        .login-title { font-family: 'Arial', sans-serif; color: #333; font-weight: 700; font-size: 24px; margin-bottom: 5px; }
+        .login-subtitle { font-family: 'Arial', sans-serif; color: #666; font-size: 14px; margin-bottom: 25px; }
     </style>
     """, unsafe_allow_html=True)
-    
-    col1, col2, col3 = st.columns([1,2,1])
+
+    col1, col2, col3 = st.columns([1, 1.5, 1])
     with col2:
-        st.image("https://cdn-icons-png.flaticon.com/512/3004/3004458.png", width=80)
-        st.markdown("### Laboratorio Santa Fe")
-        st.caption("Acceso Restringido")
-        pwd_input = st.text_input("Contraseña:", type="password", key="pwd_input")
+        if os.path.exists("logo.png"):
+            st.image("logo.png", width=150)
+        else:
+            st.image("https://cdn-icons-png.flaticon.com/512/3004/3004458.png", width=80)
         
-        if st.button("Ingresar al Sistema", use_container_width=True):
-            # Busca la clave en los secretos, si no existe usa 'santafe2025'
-            clave_maestra = st.secrets.get("PASSWORD_APP", "santafe2025")
+        st.markdown("<div class='login-title'>Laboratorio Santa Fe</div>", unsafe_allow_html=True)
+        st.markdown("<div class='login-subtitle'>Acceso Corporativo</div>", unsafe_allow_html=True)
+        
+        pwd_input = st.text_input("Contraseña:", type="password", key="pwd_input", label_visibility="collapsed", placeholder="Ingrese su clave de acceso")
+        
+        if st.button("Iniciar Sesión", type="primary", use_container_width=True):
+            # Lógica de Roles (RBAC)
+            admin_pass = st.secrets.get("PASSWORD_ADMIN", "admin123")
+            user_pass = st.secrets.get("PASSWORD_USER", "user123")
             
-            if pwd_input == clave_maestra:
+            if pwd_input == admin_pass:
                 st.session_state["password_correct"] = True
+                st.session_state["role"] = "admin"
+                st.rerun()
+            elif pwd_input == user_pass:
+                st.session_state["password_correct"] = True
+                st.session_state["role"] = "user"
                 st.rerun()
             else:
                 st.error("⛔ Acceso Denegado")
@@ -463,7 +478,14 @@ if menu_seleccionado == "📝 Cotizador y Catálogo":
                 
                 for i, row in df_ver.iterrows():
                     with st.container():
-                        c_nom, c_t, c_pre, c_btn = st.columns([3.8, 1.5, 1.5, 1.5])
+                        is_admin = st.session_state.get("role") == "admin"
+                        
+                        # Layout dinámico según rol
+                        if is_admin:
+                            c_nom, c_t, c_pre, c_btn = st.columns([3.8, 1.5, 1.5, 1.5])
+                        else:
+                            c_nom, c_t, c_pre, c_btn = st.columns([4.3, 1.5, 1.5, 1.2]) # Sin columna extra para borrar
+                            
                         lugar = str(row.get('lugar_proceso',''))
                         badge_cls = "badge-int" if "santa fe" in lugar.lower() else "badge-ref"
                         badge_txt = "INT" if "santa fe" in lugar.lower() else f"REF"
@@ -477,7 +499,12 @@ if menu_seleccionado == "📝 Cotizador y Catálogo":
                         c_pre.markdown(f"<span class='precio-lista'>${precio:,.2f}</span>", unsafe_allow_html=True)
                         
                         sys_id = row.get('id', i)
-                        col_add, col_edit, col_del = c_btn.columns([1, 1, 1])
+                        
+                        # Botones dinámicos según rol
+                        if is_admin:
+                             col_add, col_edit, col_del = c_btn.columns([1, 1, 1])
+                        else:
+                             col_add, col_edit = c_btn.columns([1, 1])
                         
                         if col_add.button("➕", key=f"add_{sys_id}", help="Agregar al carrito"):
                             item = {"id": sys_id, "nombre_estudio": row['nombre_estudio'], "precio_publico": precio if pd.notna(precio) else 0}
@@ -485,14 +512,16 @@ if menu_seleccionado == "📝 Cotizador y Catálogo":
                             
                         if col_edit.button("✏️", key=f"edit_st_{sys_id}", help="Editar estudio"):
                             editar_estudio_dialog(row)
-                            
-                        with col_del:
-                            with st.popover("🗑️", help="Eliminar permanentemente"):
-                                st.markdown("¿Borrar estudio?")
-                                if st.button("Sí, borrar", key=f"confirm_del_st_{sys_id}", type="primary"):
-                                    if eliminar_estudio(sys_id):
-                                        st.cache_data.clear()
-                                        st.rerun()
+                        
+                        # Solo Admin puede borrar
+                        if is_admin:    
+                            with col_del:
+                                with st.popover("🗑️", help="Eliminar permanentemente"):
+                                    st.markdown("¿Borrar estudio?")
+                                    if st.button("Sí, borrar", key=f"confirm_del_st_{sys_id}", type="primary"):
+                                        if eliminar_estudio(sys_id):
+                                            st.cache_data.clear()
+                                            st.rerun()
 
                         st.markdown("---")
 
